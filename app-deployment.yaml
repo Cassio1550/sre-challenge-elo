@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sre-challenge-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sre-challenge-app
+  template:
+    metadata:
+      labels:
+        app: sre-challenge-app
+    spec:
+      imagePullSecrets:
+        - name: myregistrykey 
+      containers:
+        - name: app
+          image: chainguard/graalvm-native 
+          imagePullPolicy: IfNotPresent           
+          command: ["java", "-jar", "app.jar"]    
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql-service:3306/database
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_PASSWORD
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "500m"
+            limits:
+              memory: "512Mi"
+              cpu: "1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sre-challenge-service
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: sre-challenge-app
